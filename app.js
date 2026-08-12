@@ -225,11 +225,22 @@ const app = (() => {
     function handleFileImport(e, isKey) {
         const file = e.target.files[0];
         if (!file) return;
+
+        // 检查 Papa Parse 是否已加载
+        if (typeof Papa === 'undefined') {
+            alert('Papa Parse 库未加载，请检查网络连接后刷新页面');
+            return;
+        }
+
         Papa.parse(file, {
             complete(results) {
                 try {
+                    if (results.errors && results.errors.length > 0) {
+                        console.warn('CSV 解析警告:', results.errors);
+                    }
+
                     const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
-                    if (rows.length < 2) throw new Error('数据行不足');
+                    if (rows.length < 2) throw new Error('数据行不足，请检查 CSV 格式');
 
                     // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
                     const headerRow = rows[0];
@@ -293,11 +304,16 @@ const app = (() => {
                     $('statusText').textContent = `状态: 网格已创建 (${S.nSA}x${S.nV})`;
                     $('statusText').style.color = '#16a34a';
                 } catch (err) {
+                    console.error('导入错误:', err);
                     alert('导入失败: ' + err.message);
                 }
                 e.target.value = '';
             },
-            error(err) { alert('文件解析错误: ' + err.message); e.target.value = ''; }
+            error(err) {
+                console.error('文件解析错误:', err);
+                alert('文件解析错误: ' + err.message);
+                e.target.value = '';
+            }
         });
     }
 
