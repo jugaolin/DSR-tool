@@ -250,14 +250,24 @@ const app = (() => {
         const file = e.target.files[0];
         if (!file) return;
 
+        console.log('选择的文件:', file.name, '大小:', file.size, '类型:', file.type);
+
         const reader = new FileReader();
         reader.onload = function(event) {
             try {
                 const text = event.target.result;
+                console.log('文件内容预览:', text.substring(0, 200));
+
                 const results = parseCSV(text);
+                console.log('解析结果行数:', results.data.length);
 
                 const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
-                if (rows.length < 2) throw new Error('数据行不足，请检查 CSV 格式');
+                console.log('有效数据行数:', rows.length);
+
+                if (rows.length < 2) {
+                    console.error('数据行不足，当前行数:', rows.length);
+                    throw new Error('数据行不足，请检查 CSV 格式。文件名: ' + file.name + ', 内容预览: ' + text.substring(0, 100));
+                }
 
                 // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
                 const headerRow = rows[0];
@@ -321,13 +331,14 @@ const app = (() => {
                 $('statusText').textContent = `状态: 网格已创建 (${S.nSA}x${S.nV})`;
                 $('statusText').style.color = '#16a34a';
             } catch (err) {
-                console.error('导入错误:', err);
-                alert('导入失败: ' + err.message);
+                console.error('导入错误详情:', err);
+                alert('导入失败: ' + err.message + '\n\n请按 F12 打开开发者工具，查看 Console 标签页的详细错误信息');
             }
             e.target.value = '';
         };
         reader.onerror = function() {
-            alert('文件读取失败');
+            console.error('文件读取失败');
+            alert('文件读取失败，请确保文件未被其他程序占用');
             e.target.value = '';
         };
         reader.readAsText(file, 'UTF-8');
