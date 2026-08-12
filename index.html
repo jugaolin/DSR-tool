@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时横摆角速度标定工具 v3.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <!-- 顶部标签页 -->
+    <div class="top-tabs">
+        <button class="top-tab active" data-tab="map">MAP 标定</button>
+        <button class="top-tab" data-tab="bode">Bode 分析</button>
+        <button class="top-tab" data-tab="steer">前轮转角 MAP</button>
+        <button class="top-tab" data-tab="ratio">传动比 MAP</button>
+        <div class="top-tab-spacer"></div>
+        <div class="file-actions">
+            <button id="btnImportCSV" class="btn btn-primary" title="导入 CSV 数据">导入 CSV</button>
+            <button id="btnExportMAP" class="btn btn-orange" title="导出 MAP CSV">导出 MAP</button>
+            <button id="btnExportCSV" class="btn btn-blue" title="导出 Y 值 CSV">导出 Y 值</button>
+            <input type="file" id="fileInput" accept=".csv" style="display:none">
+        </div>
+    </div>
+
+    <!-- MAP 标定页面 -->
+    <div class="tab-page active" id="page-map">
+        <div class="layout-map">
+            <!-- 左侧控制面板 -->
+            <div class="ctrl-panel">
+                <!-- 关键点导入 -->
+                <div class="section-title">关键点导入</div>
+                <button id="btnImportKeyCSV" class="btn btn-primary full-w">从 CSV 导入关键点</button>
+                <div id="importStatus" class="status-text muted">(未导入，请选择 CSV 文件)</div>
+                <input type="file" id="fileInputKey" accept=".csv" style="display:none">
+
+                <!-- 数据表格 -->
+                <div class="sub-tabs">
+                    <button class="sub-tab active" data-subtab="tabY">Y 值</button>
+                    <button class="sub-tab" data-subtab="tabSlope">斜率</button>
+                    <button class="sub-tab" data-subtab="tabAdjSlope">调整后斜率</button>
+                </div>
+                <div class="sub-tab-panels">
+                    <div class="sub-tab-panel active" id="tabY">
+                        <div class="table-scroll" id="tblYWrap"></div>
+                    </div>
+                    <div class="sub-tab-panel" id="tabSlope">
+                        <div class="mini-label">dY/dSA</div>
+                        <div class="table-scroll mini" id="tbldYdSAWrap"></div>
+                        <div class="mini-label">dY/dV</div>
+                        <div class="table-scroll mini" id="tbldYdVWrap"></div>
+                    </div>
+                    <div class="sub-tab-panel" id="tabAdjSlope">
+                        <div class="mini-label">调整后 dY/dSA</div>
+                        <div class="table-scroll mini" id="tbldYdSAAdjWrap"></div>
+                        <div class="mini-label">调整后 dY/dV</div>
+                        <div class="table-scroll mini" id="tbldYdVAdjWrap"></div>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <button id="btnExportYCSV2" class="btn btn-green btn-sm">导出 Y 值 CSV</button>
+                    <button id="btnExportSlopeCSV" class="btn btn-blue btn-sm">导出调整后斜率 CSV</button>
+                </div>
+
+                <!-- Y 值批量调整 -->
+                <div class="section-title">Y值批量调整</div>
+                <div class="adjust-row">
+                    <label>操作值:</label>
+                    <input type="number" id="editYAdjust" value="0" step="any">
+                    <button class="btn btn-green btn-op" onclick="app.adjustYValues('add')">+</button>
+                    <button class="btn btn-red btn-op" onclick="app.adjustYValues('sub')">-</button>
+                    <button class="btn btn-blue btn-op" onclick="app.adjustYValues('mul')">&times;</button>
+                    <button class="btn btn-orange btn-op" onclick="app.adjustYValues('div')">&divide;</button>
+                </div>
+                <div id="selectionStatus" class="status-text small green">已选择: 0 个单元格</div>
+
+                <!-- 斜率调整 -->
+                <div class="section-title">斜率调整</div>
+                <div class="point-select-row">
+                    <label>车速 V:</label>
+                    <select id="popupV"></select>
+                    <label>SA:</label>
+                    <select id="popupSA"></select>
+                </div>
+                <div id="currentPoint" class="status-text">当前点: V=--, SA=--</div>
+                <div id="currentValues" class="status-text small">Y=--&nbsp;&nbsp;dY/dSA=--&nbsp;&nbsp;dY/dV=--</div>
+
+                <div class="slope-section">
+                    <div class="mini-label bold center">dY/dSA 调整</div>
+                    <div class="slope-row">
+                        <span id="textCurDYdSA" class="status-text small">当前值: --</span>
+                        <input type="number" id="editDYdSA" value="0.1" step="any">
+                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('SA')">设置</button>
+                    </div>
+                    <input type="range" id="sliderDYdSA" min="0" max="2" step="0.001" value="0.1">
+                </div>
+                <div class="slope-section">
+                    <div class="mini-label bold center">dY/dV 调整</div>
+                    <div class="slope-row">
+                        <span id="textCurDYdV" class="status-text small">当前值: --</span>
+                        <input type="number" id="editDYdV" value="0.3" step="any">
+                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('V')">设置</button>
+                    </div>
+                    <input type="range" id="sliderDYdV" min="0" max="5" step="0.001" value="0.3">
+                </div>
+                <button id="btnResetSlopes" class="btn btn-gray full-w">重置所有斜率为默认值</button>
+
+                <!-- 操作 -->
+                <div class="section-title">操作</div>
+                <button id="btnBuild" class="btn btn-green full-w">构建曲面</button>
+                <div class="export-row">
+                    <button id="btnExportMAP2" class="btn btn-orange btn-sm">导出 MAP CSV</button>
+                    <button id="btnExportExcel" class="btn btn-blue btn-sm">导出 Excel CSV</button>
+                </div>
+
+                <!-- 状态 -->
+                <div id="statusText" class="status-text bold">状态: 等待创建网格</div>
+            </div>
+
+            <!-- 右侧图表区 -->
+            <div class="chart-area">
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <canvas id="chartYSA"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="chartSlopeSA"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="chartYV"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="chartSlopeV"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bode 分析页面 -->
+    <div class="tab-page" id="page-bode">
+        <div class="layout-bode">
+            <!-- 左侧参数面板 -->
+            <div class="ctrl-panel bode-ctrl">
+                <!-- 逆模型参数 -->
+                <div class="section-title">逆模型 - 车辆参数</div>
+                <div class="param-grid">
+                    <label>m [kg]:</label><input type="number" id="m_inv" value="2914" step="any">
+                    <label>Cf [N/rad]:</label><input type="number" id="Cf_inv" value="177936" step="any">
+                    <label>Cr [N/rad]:</label><input type="number" id="Cr_inv" value="323205" step="any">
+                    <label>a [m]:</label><input type="number" id="a_inv" value="1.492" step="any">
+                    <label>b [m]:</label><input type="number" id="b_inv" value="1.508" step="any">
+                    <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="Iz_inv" value="5308" step="any">
+                </div>
+
+                <!-- 瞬态模型参数 -->
+                <div class="section-title">瞬态模型 - 车辆参数</div>
+                <div class="param-grid">
+                    <label>m [kg]:</label><input type="number" id="m_trans" value="2914" step="any">
+                    <label>Cf [N/rad]:</label><input type="number" id="Cf_trans" value="177936" step="any">
+                    <label>Cr [N/rad]:</label><input type="number" id="Cr_trans" value="323205" step="any">
+                    <label>a [m]:</label><input type="number" id="a_trans" value="1.492" step="any">
+                    <label>b [m]:</label><input type="number" id="b_trans" value="1.508" step="any">
+                    <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="Iz_trans" value="5771.52" step="any">
+                </div>
+
+                <!-- 滤波器参数 -->
+                <div class="section-title">因果化滤波器</div>
+                <div class="param-grid">
+                    <label>FreqBW [Hz]:</label><input type="number" id="FreqBW" value="10" step="any">
+                    <label>zetaC [-]:</label><input type="number" id="zetaC" value="1.3" step="any">
+                </div>
+
+                <button id="btnUpdateBode" class="btn btn-primary full-w">更新 Bode 图</button>
+                <button id="btnResetParams" class="btn btn-gray full-w">重置参数</button>
+
+                <div id="bodeStatus" class="status-text bold">状态: 点击"更新 Bode 图"开始分析</div>
+            </div>
+
+            <!-- 右侧 Bode 图表 -->
+            <div class="bode-charts">
+                <div class="bode-row">
+                    <div class="chart-box"><canvas id="chartGinvMag"></canvas></div>
+                    <div class="chart-box"><canvas id="chartGinvPhase"></canvas></div>
+                </div>
+                <div class="bode-row">
+                    <div class="chart-box"><canvas id="chartHMag"></canvas></div>
+                    <div class="chart-box"><canvas id="chartHPhase"></canvas></div>
+                </div>
+                <div class="bode-row">
+                    <div class="chart-box"><canvas id="chartGtotalMag"></canvas></div>
+                    <div class="chart-box"><canvas id="chartGtotalPhase"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 前轮转角 MAP 页面 -->
+    <div class="tab-page" id="page-steer">
+        <div class="layout-bode">
+            <!-- 左侧参数面板 -->
+            <div class="ctrl-panel bode-ctrl">
+                <div class="section-title">车辆参数</div>
+                <div class="param-grid">
+                    <label>m [kg]:</label><input type="number" id="steer_m" value="2914" step="any">
+                    <label>Cf [N/rad]:</label><input type="number" id="steer_Cf" value="177936" step="any">
+                    <label>Cr [N/rad]:</label><input type="number" id="steer_Cr" value="323205" step="any">
+                    <label>a [m]:</label><input type="number" id="steer_a" value="1.492" step="any">
+                    <label>b [m]:</label><input type="number" id="steer_b" value="1.508" step="any">
+                    <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="steer_Iz" value="5308" step="any">
+                </div>
+                <div class="section-title">滤波器参数</div>
+                <div class="param-grid">
+                    <label>FreqBW [Hz]:</label><input type="number" id="steer_FreqBW" value="10" step="any">
+                    <label>zetaC [-]:</label><input type="number" id="steer_zetaC" value="1.3" step="any">
+                </div>
+                <button id="btnGenSteerMap" class="btn btn-green full-w">生成前轮转角 MAP</button>
+                <button id="btnResetSteerParams" class="btn btn-gray full-w">重置参数</button>
+                <div id="steerStatus" class="status-text bold">状态: 点击"生成前轮转角 MAP"开始</div>
+                <div id="steerGainInfo" class="gain-info" style="margin-top:10px"></div>
+                <div class="export-row" style="margin-top:10px">
+                    <button class="btn btn-green btn-sm" onclick="app.exportSteeringCSV()">导出前轮转角</button>
+                </div>
+            </div>
+            <!-- 右侧内容 -->
+            <div class="steer-content">
+                <div class="steer-table-box" style="flex:1">
+                    <h4>前轮转角 MAP (deg)</h4>
+                    <div class="table-scroll" id="tblSteerWrap"></div>
+                </div>
+                <div class="steer-charts-row" style="min-height:300px">
+                    <div class="chart-box"><canvas id="chartSteerSA"></canvas></div>
+                    <div class="chart-box"><canvas id="chartSteerV"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 传动比 MAP 页面 -->
+    <div class="tab-page" id="page-ratio">
+        <div class="layout-bode">
+            <!-- 左侧参数面板 -->
+            <div class="ctrl-panel bode-ctrl">
+                <div class="section-title">车辆参数</div>
+                <div class="param-grid">
+                    <label>m [kg]:</label><input type="number" id="ratio_m" value="2914" step="any">
+                    <label>Cf [N/rad]:</label><input type="number" id="ratio_Cf" value="177936" step="any">
+                    <label>Cr [N/rad]:</label><input type="number" id="ratio_Cr" value="323205" step="any">
+                    <label>a [m]:</label><input type="number" id="ratio_a" value="1.492" step="any">
+                    <label>b [m]:</label><input type="number" id="ratio_b" value="1.508" step="any">
+                    <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="ratio_Iz" value="5308" step="any">
+                </div>
+                <div class="section-title">滤波器参数</div>
+                <div class="param-grid">
+                    <label>FreqBW [Hz]:</label><input type="number" id="ratio_FreqBW" value="10" step="any">
+                    <label>zetaC [-]:</label><input type="number" id="ratio_zetaC" value="1.3" step="any">
+                </div>
+                <button id="btnGenRatioMap" class="btn btn-green full-w">生成传动比 MAP</button>
+                <button id="btnResetRatioParams" class="btn btn-gray full-w">重置参数</button>
+                <div id="ratioStatus" class="status-text bold">状态: 点击"生成传动比 MAP"开始</div>
+                <div id="ratioGainInfo" class="gain-info" style="margin-top:10px"></div>
+                <div class="export-row" style="margin-top:10px">
+                    <button class="btn btn-blue btn-sm" onclick="app.exportRatioCSV()">导出传动比</button>
+                </div>
+            </div>
+            <!-- 右侧内容 -->
+            <div class="steer-content">
+                <div class="steer-table-box" style="flex:1">
+                    <h4>传动比 MAP (SA/&delta;)</h4>
+                    <div class="table-scroll" id="tblRatioWrap"></div>
+                </div>
+                <div class="steer-charts-row" style="min-height:300px">
+                    <div class="chart-box"><canvas id="chartRatioSA"></canvas></div>
+                    <div class="chart-box"><canvas id="chartRatioV"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
