@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -22,7 +21,7 @@
             <button id="btnImportCSV" class="btn btn-primary" title="导入 CSV 数据">导入 CSV</button>
             <button id="btnExportMAP" class="btn btn-orange" title="导出 MAP CSV">导出 MAP</button>
             <button id="btnExportCSV" class="btn btn-blue" title="导出 Y 值 CSV">导出 Y 值</button>
-            <input type="file" id="fileInput" accept=".csv" style="display:none">
+            <input type="file" id="fileInput" accept=".csv,.txt,text/csv" style="display:none">
         </div>
     </div>
 
@@ -35,7 +34,7 @@
                 <div class="section-title">关键点导入</div>
                 <button id="btnImportKeyCSV" class="btn btn-primary full-w">从 CSV 导入关键点</button>
                 <div id="importStatus" class="status-text muted">(未导入，请选择 CSV 文件)</div>
-                <input type="file" id="fileInputKey" accept=".csv" style="display:none">
+                <input type="file" id="fileInputKey" accept=".csv,.txt,text/csv" style="display:none">
 
                 <!-- 数据表格 -->
                 <div class="sub-tabs">

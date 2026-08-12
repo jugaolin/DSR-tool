@@ -1,5 +1,29 @@
 /* ===== 实时横摆角速度标定工具 v3.0 - Web版 ===== */
 
+// 内置 CSV 解析器（替代 Papa Parse）
+function parseCSV(text) {
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
+    const data = lines.map(line => {
+        const row = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') {
+                inQuotes = !inQuotes;
+            } else if (c === ',' && !inQuotes) {
+                row.push(current.trim());
+                current = '';
+            } else {
+                current += c;
+            }
+        }
+        row.push(current.trim());
+        return row;
+    });
+    return { data, errors: [] };
+}
+
 const app = (() => {
     "use strict";
 
@@ -226,95 +250,87 @@ const app = (() => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // 检查 Papa Parse 是否已加载
-        if (typeof Papa === 'undefined') {
-            alert('Papa Parse 库未加载，请检查网络连接后刷新页面');
-            return;
-        }
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const text = event.target.result;
+                const results = parseCSV(text);
 
-        Papa.parse(file, {
-            complete(results) {
-                try {
-                    if (results.errors && results.errors.length > 0) {
-                        console.warn('CSV 解析警告:', results.errors);
-                    }
+                const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
+                if (rows.length < 2) throw new Error('数据行不足，请检查 CSV 格式');
 
-                    const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
-                    if (rows.length < 2) throw new Error('数据行不足，请检查 CSV 格式');
-
-                    // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
-                    const headerRow = rows[0];
-                    const startCol = isNaN(parseFloat(headerRow[0])) ? 1 : 0;
-                    const SA_vals = [];
-                    for (let c = startCol; c < headerRow.length; c++) {
-                        const v = parseFloat(headerRow[c]);
-                        if (!isNaN(v)) SA_vals.push(v);
-                    }
-
-                    // 数据行: 首列为 V 值, 之后为 Y 值
-                    const V_vals = [];
-                    const Y_rows = [];
-                    for (let r = 1; r < rows.length; r++) {
-                        const row = rows[r];
-                        const v = parseFloat(row[0]);
-                        if (isNaN(v)) continue;
-                        V_vals.push(v);
-                        const yrow = [];
-                        for (let c = startCol; c < startCol + SA_vals.length; c++) {
-                            yrow.push(parseFloat(row[c]) || 0);
-                        }
-                        Y_rows.push(yrow);
-                    }
-
-                    // 排序
-                    const saOrder = SA_vals.map((v, i) => i).sort((a, b) => SA_vals[a] - SA_vals[b]);
-                    const vOrder = V_vals.map((v, i) => i).sort((a, b) => V_vals[a] - V_vals[b]);
-
-                    S.SA = saOrder.map(i => SA_vals[i]);
-                    S.V = vOrder.map(i => V_vals[i]);
-                    S.nSA = S.SA.length;
-                    S.nV = S.V.length;
-
-                    // Y 矩阵: nSA x nV  (MATLAB 中 Y(jj, ii) 即 SA列, V行)
-                    S.Y = [];
-                    for (let si = 0; si < S.nSA; si++) {
-                        S.Y[si] = [];
-                        for (let vi = 0; vi < S.nV; vi++) {
-                            S.Y[si][vi] = Y_rows[vOrder[vi]][saOrder[si]];
-                        }
-                    }
-
-                    S.Y_original = S.Y.map(r => [...r]);
-                    S.dY_dSA = computeInitialSlopes(S.SA, S.V, S.Y, 'SA');
-                    S.dY_dV = computeInitialSlopes(S.SA, S.V, S.Y, 'V');
-                    S.dY_dSA_adj = S.dY_dSA.map(r => [...r]);
-                    S.dY_dV_adj = S.dY_dV.map(r => [...r]);
-                    S.isBuilt = false;
-                    S.selectedSA_idx = -1;
-                    S.selectedV_idx = -1;
-
-                    updatePopupSelects();
-                    updateAllTables();
-                    updatePlots();
-                    onPopupChanged();
-
-                    $('importStatus').textContent = `已导入: ${file.name} (${S.nSA}SA x ${S.nV}V)`;
-                    $('importStatus').classList.remove('muted');
-                    $('importStatus').style.color = '#16a34a';
-                    $('statusText').textContent = `状态: 网格已创建 (${S.nSA}x${S.nV})`;
-                    $('statusText').style.color = '#16a34a';
-                } catch (err) {
-                    console.error('导入错误:', err);
-                    alert('导入失败: ' + err.message);
+                // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
+                const headerRow = rows[0];
+                const startCol = isNaN(parseFloat(headerRow[0])) ? 1 : 0;
+                const SA_vals = [];
+                for (let c = startCol; c < headerRow.length; c++) {
+                    const v = parseFloat(headerRow[c]);
+                    if (!isNaN(v)) SA_vals.push(v);
                 }
-                e.target.value = '';
-            },
-            error(err) {
-                console.error('文件解析错误:', err);
-                alert('文件解析错误: ' + err.message);
-                e.target.value = '';
+
+                // 数据行: 首列为 V 值, 之后为 Y 值
+                const V_vals = [];
+                const Y_rows = [];
+                for (let r = 1; r < rows.length; r++) {
+                    const row = rows[r];
+                    const v = parseFloat(row[0]);
+                    if (isNaN(v)) continue;
+                    V_vals.push(v);
+                    const yrow = [];
+                    for (let c = startCol; c < startCol + SA_vals.length; c++) {
+                        yrow.push(parseFloat(row[c]) || 0);
+                    }
+                    Y_rows.push(yrow);
+                }
+
+                // 排序
+                const saOrder = SA_vals.map((v, i) => i).sort((a, b) => SA_vals[a] - SA_vals[b]);
+                const vOrder = V_vals.map((v, i) => i).sort((a, b) => V_vals[a] - V_vals[b]);
+
+                S.SA = saOrder.map(i => SA_vals[i]);
+                S.V = vOrder.map(i => V_vals[i]);
+                S.nSA = S.SA.length;
+                S.nV = S.V.length;
+
+                // Y 矩阵: nSA x nV
+                S.Y = [];
+                for (let si = 0; si < S.nSA; si++) {
+                    S.Y[si] = [];
+                    for (let vi = 0; vi < S.nV; vi++) {
+                        S.Y[si][vi] = Y_rows[vOrder[vi]][saOrder[si]];
+                    }
+                }
+
+                S.Y_original = S.Y.map(r => [...r]);
+                S.dY_dSA = computeInitialSlopes(S.SA, S.V, S.Y, 'SA');
+                S.dY_dV = computeInitialSlopes(S.SA, S.V, S.Y, 'V');
+                S.dY_dSA_adj = S.dY_dSA.map(r => [...r]);
+                S.dY_dV_adj = S.dY_dV.map(r => [...r]);
+                S.isBuilt = false;
+                S.selectedSA_idx = -1;
+                S.selectedV_idx = -1;
+
+                updatePopupSelects();
+                updateAllTables();
+                updatePlots();
+                onPopupChanged();
+
+                $('importStatus').textContent = `已导入: ${file.name} (${S.nSA}SA x ${S.nV}V)`;
+                $('importStatus').classList.remove('muted');
+                $('importStatus').style.color = '#16a34a';
+                $('statusText').textContent = `状态: 网格已创建 (${S.nSA}x${S.nV})`;
+                $('statusText').style.color = '#16a34a';
+            } catch (err) {
+                console.error('导入错误:', err);
+                alert('导入失败: ' + err.message);
             }
-        });
+            e.target.value = '';
+        };
+        reader.onerror = function() {
+            alert('文件读取失败');
+            e.target.value = '';
+        };
+        reader.readAsText(file, 'UTF-8');
     }
 
     /* ============ 下拉列表 ============ */
