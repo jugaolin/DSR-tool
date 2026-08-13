@@ -4,9 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>实时横摆角速度标定工具 v3.0</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="chart.umd.min.js"></script>
-    <script src="chartjs-plugin-zoom.min.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" href="style.css?v=2">
+    <script src="chart.umd.min.js?v=2"></script>
+    <script src="chartjs-plugin-zoom.min.js?v=2"></script>
+    <script>
+        // 检查 Chart.js 是否加载
+        if (typeof Chart === 'undefined') {
+            document.write('<div style="background:#fee;color:#c00;padding:20px;font-size:16px;">错误: Chart.js 未加载，请刷新页面重试</div>');
+        } else {
+            console.log('✅ Chart.js 已加载:', Chart.version);
+        }
+    </script>
 </head>
 <body>
 <div id="app">
@@ -280,6 +291,6 @@
     </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
