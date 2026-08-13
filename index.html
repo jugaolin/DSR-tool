@@ -1964,7 +1964,12 @@ const app = (() => {
     }
 
     /* ============ 鍒濆鍖?============ */
-    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    console.log('app.js code executed');
 
     /* ============ 鍏紑 API ============ */
     return { adjustYValues, setSinglePointSlope, resetSteerParams, resetRatioParams, exportSteeringCSV, exportRatioCSV };
@@ -1973,4 +1978,5 @@ const app = (() => {
 </script>
 </body>
 </html>
+
 
