@@ -250,33 +250,38 @@ const app = (() => {
         const file = e.target.files[0];
         if (!file) return;
 
-        console.log('选择的文件:', file.name, '大小:', file.size, '类型:', file.type);
+        console.log('=== 导入按钮被点击 ===');
+        console.log('文件:', file.name, '大小:', file.size, '类型:', file.type);
 
         const reader = new FileReader();
         reader.onload = function(event) {
             try {
                 const text = event.target.result;
-                console.log('文件内容预览:', text.substring(0, 200));
+                console.log('文件内容前200字符:', text.substring(0, 200));
 
                 const results = parseCSV(text);
-                console.log('解析结果行数:', results.data.length);
+                console.log('解析完成:', results.data.length, '行数据');
 
                 const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
-                console.log('有效数据行数:', rows.length);
+                console.log('过滤后有效行:', rows.length);
 
                 if (rows.length < 2) {
-                    console.error('数据行不足，当前行数:', rows.length);
-                    throw new Error('数据行不足，请检查 CSV 格式。文件名: ' + file.name + ', 内容预览: ' + text.substring(0, 100));
+                    console.error('❌ 数据行不足:', rows.length);
+                    throw new Error('数据行不足，请检查 CSV 格式');
                 }
 
                 // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
                 const headerRow = rows[0];
+                console.log('表头行:', headerRow);
                 const startCol = isNaN(parseFloat(headerRow[0])) ? 1 : 0;
+                console.log('起始列:', startCol);
+
                 const SA_vals = [];
                 for (let c = startCol; c < headerRow.length; c++) {
                     const v = parseFloat(headerRow[c]);
                     if (!isNaN(v)) SA_vals.push(v);
                 }
+                console.log('SA值:', SA_vals);
 
                 // 数据行: 首列为 V 值, 之后为 Y 值
                 const V_vals = [];
@@ -291,6 +296,13 @@ const app = (() => {
                         yrow.push(parseFloat(row[c]) || 0);
                     }
                     Y_rows.push(yrow);
+                }
+                console.log('V值:', V_vals);
+                console.log('Y数据行数:', Y_rows.length);
+
+                if (SA_vals.length === 0 || V_vals.length === 0) {
+                    console.error('❌ SA或V值为空');
+                    throw new Error('未找到有效的SA或V值');
                 }
 
                 // 排序
@@ -320,10 +332,14 @@ const app = (() => {
                 S.selectedSA_idx = -1;
                 S.selectedV_idx = -1;
 
+                console.log('✅ 关键点加载完成:', S.nSA, '个SA,', S.nV, '个V');
+
                 updatePopupSelects();
                 updateAllTables();
                 updatePlots();
                 onPopupChanged();
+
+                console.log('✅ 表格和图表更新完成');
 
                 $('importStatus').textContent = `已导入: ${file.name} (${S.nSA}SA x ${S.nV}V)`;
                 $('importStatus').classList.remove('muted');
