@@ -555,6 +555,7 @@ const app = (() => {
         $('btnImportCSV').onclick = () => $('fileInput').click();
         $('fileInputKey').addEventListener('change', e => handleFileImport(e, true));
         $('fileInput').addEventListener('change', e => handleFileImport(e, false));
+        document.getElementById('btnLoadRepoFile').onclick = function() { loadRepoFile(); };
 
         // 导出
         $('btnExportMAP').onclick = () => exportMAP();
