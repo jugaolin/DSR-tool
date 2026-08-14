@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>瀹炴椂妯憜瑙掗€熷害鏍囧畾宸ュ叿 v3.0</title>
+    <title>实时横摆角速度标定工具 v3.0</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <style>
-/* ===== Reset & Base ===== */
+    <style>/* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; font-size: 13px; color: #222; background: #f0f2f5; }
 #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -163,52 +162,51 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
 .ctrl-panel::-webkit-scrollbar, .table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .ctrl-panel::-webkit-scrollbar-thumb, .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .ctrl-panel::-webkit-scrollbar-track, .table-scroll::-webkit-scrollbar-track { background: transparent; }
-
 </style>
     <script src="chart.umd.min.js?v=2"></script>
     <script src="chartjs-plugin-zoom.min.js?v=2"></script>
     <script>
-        // 妫€鏌?Chart.js 鏄惁鍔犺浇
+        // 检查 Chart.js 是否加载
         if (typeof Chart === 'undefined') {
-            document.write('<div style="background:#fee;color:#c00;padding:20px;font-size:16px;">閿欒: Chart.js 鏈姞杞斤紝璇峰埛鏂伴〉闈㈤噸璇?/div>');
+            document.write('<div style="background:#fee;color:#c00;padding:20px;font-size:16px;">错误: Chart.js 未加载，请刷新页面重试</div>');
         } else {
-            console.log('鉁?Chart.js 宸插姞杞?', Chart.version);
+            console.log('✅ Chart.js 已加载:', Chart.version);
         }
     </script>
 </head>
 <body>
 <div id="app">
-    <!-- 椤堕儴鏍囩椤?-->
+    <!-- 顶部标签页 -->
     <div class="top-tabs">
-        <button class="top-tab active" data-tab="map">MAP 鏍囧畾</button>
-        <button class="top-tab" data-tab="bode">Bode 鍒嗘瀽</button>
-        <button class="top-tab" data-tab="steer">鍓嶈疆杞 MAP</button>
-        <button class="top-tab" data-tab="ratio">浼犲姩姣?MAP</button>
+        <button class="top-tab active" data-tab="map">MAP 标定</button>
+        <button class="top-tab" data-tab="bode">Bode 分析</button>
+        <button class="top-tab" data-tab="steer">前轮转角 MAP</button>
+        <button class="top-tab" data-tab="ratio">传动比 MAP</button>
         <div class="top-tab-spacer"></div>
         <div class="file-actions">
-            <button id="btnImportCSV" class="btn btn-primary" title="瀵煎叆 CSV 鏁版嵁">瀵煎叆 CSV</button>
-            <button id="btnExportMAP" class="btn btn-orange" title="瀵煎嚭 MAP CSV">瀵煎嚭 MAP</button>
-            <button id="btnExportCSV" class="btn btn-blue" title="瀵煎嚭 Y 鍊?CSV">瀵煎嚭 Y 鍊?/button>
+            <button id="btnImportCSV" class="btn btn-primary" title="导入 CSV 数据">导入 CSV</button>
+            <button id="btnExportMAP" class="btn btn-orange" title="导出 MAP CSV">导出 MAP</button>
+            <button id="btnExportCSV" class="btn btn-blue" title="导出 Y 值 CSV">导出 Y 值</button>
             <input type="file" id="fileInput" accept=".csv,.txt,.xls,.xlsx,text/csv,application/vnd.ms-excel" style="display:none">
         </div>
     </div>
 
-    <!-- MAP 鏍囧畾椤甸潰 -->
+    <!-- MAP 标定页面 -->
     <div class="tab-page active" id="page-map">
         <div class="layout-map">
-            <!-- 宸︿晶鎺у埗闈㈡澘 -->
+            <!-- 左侧控制面板 -->
             <div class="ctrl-panel">
-                <!-- 鍏抽敭鐐瑰鍏?-->
-                <div class="section-title">鍏抽敭鐐瑰鍏?/div>
-                <button id="btnImportKeyCSV" class="btn btn-primary full-w">浠?CSV 瀵煎叆鍏抽敭鐐?/button>
-                <div id="importStatus" class="status-text muted">(鏈鍏ワ紝璇烽€夋嫨 CSV 鏂囦欢)</div>
+                <!-- 关键点导入 -->
+                <div class="section-title">关键点导入</div>
+                <button id="btnImportKeyCSV" class="btn btn-primary full-w">从 CSV 导入关键点</button>
+                <div id="importStatus" class="status-text muted">(未导入，请选择 CSV 文件)</div>
                 <input type="file" id="fileInputKey" accept=".csv,.txt,.xls,.xlsx,text/csv,application/vnd.ms-excel" style="display:none">
 
-                <!-- 鏁版嵁琛ㄦ牸 -->
+                <!-- 数据表格 -->
                 <div class="sub-tabs">
-                    <button class="sub-tab active" data-subtab="tabY">Y 鍊?/button>
-                    <button class="sub-tab" data-subtab="tabSlope">鏂滅巼</button>
-                    <button class="sub-tab" data-subtab="tabAdjSlope">璋冩暣鍚庢枩鐜?/button>
+                    <button class="sub-tab active" data-subtab="tabY">Y 值</button>
+                    <button class="sub-tab" data-subtab="tabSlope">斜率</button>
+                    <button class="sub-tab" data-subtab="tabAdjSlope">调整后斜率</button>
                 </div>
                 <div class="sub-tab-panels">
                     <div class="sub-tab-panel active" id="tabY">
@@ -221,73 +219,73 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
                         <div class="table-scroll mini" id="tbldYdVWrap"></div>
                     </div>
                     <div class="sub-tab-panel" id="tabAdjSlope">
-                        <div class="mini-label">璋冩暣鍚?dY/dSA</div>
+                        <div class="mini-label">调整后 dY/dSA</div>
                         <div class="table-scroll mini" id="tbldYdSAAdjWrap"></div>
-                        <div class="mini-label">璋冩暣鍚?dY/dV</div>
+                        <div class="mini-label">调整后 dY/dV</div>
                         <div class="table-scroll mini" id="tbldYdVAdjWrap"></div>
                     </div>
                 </div>
                 <div class="export-row">
-                    <button id="btnExportYCSV2" class="btn btn-green btn-sm">瀵煎嚭 Y 鍊?CSV</button>
-                    <button id="btnExportSlopeCSV" class="btn btn-blue btn-sm">瀵煎嚭璋冩暣鍚庢枩鐜?CSV</button>
+                    <button id="btnExportYCSV2" class="btn btn-green btn-sm">导出 Y 值 CSV</button>
+                    <button id="btnExportSlopeCSV" class="btn btn-blue btn-sm">导出调整后斜率 CSV</button>
                 </div>
 
-                <!-- Y 鍊兼壒閲忚皟鏁?-->
-                <div class="section-title">Y鍊兼壒閲忚皟鏁?/div>
+                <!-- Y 值批量调整 -->
+                <div class="section-title">Y值批量调整</div>
                 <div class="adjust-row">
-                    <label>鎿嶄綔鍊?</label>
+                    <label>操作值:</label>
                     <input type="number" id="editYAdjust" value="0" step="any">
                     <button class="btn btn-green btn-op" onclick="app.adjustYValues('add')">+</button>
                     <button class="btn btn-red btn-op" onclick="app.adjustYValues('sub')">-</button>
                     <button class="btn btn-blue btn-op" onclick="app.adjustYValues('mul')">&times;</button>
                     <button class="btn btn-orange btn-op" onclick="app.adjustYValues('div')">&divide;</button>
                 </div>
-                <div id="selectionStatus" class="status-text small green">宸查€夋嫨: 0 涓崟鍏冩牸</div>
+                <div id="selectionStatus" class="status-text small green">已选择: 0 个单元格</div>
 
-                <!-- 鏂滅巼璋冩暣 -->
-                <div class="section-title">鏂滅巼璋冩暣</div>
+                <!-- 斜率调整 -->
+                <div class="section-title">斜率调整</div>
                 <div class="point-select-row">
-                    <label>杞﹂€?V:</label>
+                    <label>车速 V:</label>
                     <select id="popupV"></select>
                     <label>SA:</label>
                     <select id="popupSA"></select>
                 </div>
-                <div id="currentPoint" class="status-text">褰撳墠鐐? V=--, SA=--</div>
+                <div id="currentPoint" class="status-text">当前点: V=--, SA=--</div>
                 <div id="currentValues" class="status-text small">Y=--&nbsp;&nbsp;dY/dSA=--&nbsp;&nbsp;dY/dV=--</div>
 
                 <div class="slope-section">
-                    <div class="mini-label bold center">dY/dSA 璋冩暣</div>
+                    <div class="mini-label bold center">dY/dSA 调整</div>
                     <div class="slope-row">
-                        <span id="textCurDYdSA" class="status-text small">褰撳墠鍊? --</span>
+                        <span id="textCurDYdSA" class="status-text small">当前值: --</span>
                         <input type="number" id="editDYdSA" value="0.1" step="any">
-                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('SA')">璁剧疆</button>
+                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('SA')">设置</button>
                     </div>
                     <input type="range" id="sliderDYdSA" min="0" max="2" step="0.001" value="0.1">
                 </div>
                 <div class="slope-section">
-                    <div class="mini-label bold center">dY/dV 璋冩暣</div>
+                    <div class="mini-label bold center">dY/dV 调整</div>
                     <div class="slope-row">
-                        <span id="textCurDYdV" class="status-text small">褰撳墠鍊? --</span>
+                        <span id="textCurDYdV" class="status-text small">当前值: --</span>
                         <input type="number" id="editDYdV" value="0.3" step="any">
-                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('V')">璁剧疆</button>
+                        <button class="btn btn-primary btn-sm" onclick="app.setSinglePointSlope('V')">设置</button>
                     </div>
                     <input type="range" id="sliderDYdV" min="0" max="5" step="0.001" value="0.3">
                 </div>
-                <button id="btnResetSlopes" class="btn btn-gray full-w">閲嶇疆鎵€鏈夋枩鐜囦负榛樿鍊?/button>
+                <button id="btnResetSlopes" class="btn btn-gray full-w">重置所有斜率为默认值</button>
 
-                <!-- 鎿嶄綔 -->
-                <div class="section-title">鎿嶄綔</div>
-                <button id="btnBuild" class="btn btn-green full-w">鏋勫缓鏇查潰</button>
+                <!-- 操作 -->
+                <div class="section-title">操作</div>
+                <button id="btnBuild" class="btn btn-green full-w">构建曲面</button>
                 <div class="export-row">
-                    <button id="btnExportMAP2" class="btn btn-orange btn-sm">瀵煎嚭 MAP CSV</button>
-                    <button id="btnExportExcel" class="btn btn-blue btn-sm">瀵煎嚭 Excel CSV</button>
+                    <button id="btnExportMAP2" class="btn btn-orange btn-sm">导出 MAP CSV</button>
+                    <button id="btnExportExcel" class="btn btn-blue btn-sm">导出 Excel CSV</button>
                 </div>
 
-                <!-- 鐘舵€?-->
-                <div id="statusText" class="status-text bold">鐘舵€? 绛夊緟鍒涘缓缃戞牸</div>
+                <!-- 状态 -->
+                <div id="statusText" class="status-text bold">状态: 等待创建网格</div>
             </div>
 
-            <!-- 鍙充晶鍥捐〃鍖?-->
+            <!-- 右侧图表区 -->
             <div class="chart-area">
                 <div class="chart-grid">
                     <div class="chart-box">
@@ -307,13 +305,13 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
         </div>
     </div>
 
-    <!-- Bode 鍒嗘瀽椤甸潰 -->
+    <!-- Bode 分析页面 -->
     <div class="tab-page" id="page-bode">
         <div class="layout-bode">
-            <!-- 宸︿晶鍙傛暟闈㈡澘 -->
+            <!-- 左侧参数面板 -->
             <div class="ctrl-panel bode-ctrl">
-                <!-- 閫嗘ā鍨嬪弬鏁?-->
-                <div class="section-title">閫嗘ā鍨?- 杞﹁締鍙傛暟</div>
+                <!-- 逆模型参数 -->
+                <div class="section-title">逆模型 - 车辆参数</div>
                 <div class="param-grid">
                     <label>m [kg]:</label><input type="number" id="m_inv" value="2914" step="any">
                     <label>Cf [N/rad]:</label><input type="number" id="Cf_inv" value="177936" step="any">
@@ -323,8 +321,8 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
                     <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="Iz_inv" value="5308" step="any">
                 </div>
 
-                <!-- 鐬€佹ā鍨嬪弬鏁?-->
-                <div class="section-title">鐬€佹ā鍨?- 杞﹁締鍙傛暟</div>
+                <!-- 瞬态模型参数 -->
+                <div class="section-title">瞬态模型 - 车辆参数</div>
                 <div class="param-grid">
                     <label>m [kg]:</label><input type="number" id="m_trans" value="2914" step="any">
                     <label>Cf [N/rad]:</label><input type="number" id="Cf_trans" value="177936" step="any">
@@ -334,20 +332,20 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
                     <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="Iz_trans" value="5771.52" step="any">
                 </div>
 
-                <!-- 婊ゆ尝鍣ㄥ弬鏁?-->
-                <div class="section-title">鍥犳灉鍖栨护娉㈠櫒</div>
+                <!-- 滤波器参数 -->
+                <div class="section-title">因果化滤波器</div>
                 <div class="param-grid">
                     <label>FreqBW [Hz]:</label><input type="number" id="FreqBW" value="10" step="any">
                     <label>zetaC [-]:</label><input type="number" id="zetaC" value="1.3" step="any">
                 </div>
 
-                <button id="btnUpdateBode" class="btn btn-primary full-w">鏇存柊 Bode 鍥?/button>
-                <button id="btnResetParams" class="btn btn-gray full-w">閲嶇疆鍙傛暟</button>
+                <button id="btnUpdateBode" class="btn btn-primary full-w">更新 Bode 图</button>
+                <button id="btnResetParams" class="btn btn-gray full-w">重置参数</button>
 
-                <div id="bodeStatus" class="status-text bold">鐘舵€? 鐐瑰嚮"鏇存柊 Bode 鍥?寮€濮嬪垎鏋?/div>
+                <div id="bodeStatus" class="status-text bold">状态: 点击"更新 Bode 图"开始分析</div>
             </div>
 
-            <!-- 鍙充晶 Bode 鍥捐〃 -->
+            <!-- 右侧 Bode 图表 -->
             <div class="bode-charts">
                 <div class="bode-row">
                     <div class="chart-box"><canvas id="chartGinvMag"></canvas></div>
@@ -365,12 +363,12 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
         </div>
     </div>
 
-    <!-- 鍓嶈疆杞 MAP 椤甸潰 -->
+    <!-- 前轮转角 MAP 页面 -->
     <div class="tab-page" id="page-steer">
         <div class="layout-bode">
-            <!-- 宸︿晶鍙傛暟闈㈡澘 -->
+            <!-- 左侧参数面板 -->
             <div class="ctrl-panel bode-ctrl">
-                <div class="section-title">杞﹁締鍙傛暟</div>
+                <div class="section-title">车辆参数</div>
                 <div class="param-grid">
                     <label>m [kg]:</label><input type="number" id="steer_m" value="2914" step="any">
                     <label>Cf [N/rad]:</label><input type="number" id="steer_Cf" value="177936" step="any">
@@ -379,23 +377,23 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
                     <label>b [m]:</label><input type="number" id="steer_b" value="1.508" step="any">
                     <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="steer_Iz" value="5308" step="any">
                 </div>
-                <div class="section-title">婊ゆ尝鍣ㄥ弬鏁?/div>
+                <div class="section-title">滤波器参数</div>
                 <div class="param-grid">
                     <label>FreqBW [Hz]:</label><input type="number" id="steer_FreqBW" value="10" step="any">
                     <label>zetaC [-]:</label><input type="number" id="steer_zetaC" value="1.3" step="any">
                 </div>
-                <button id="btnGenSteerMap" class="btn btn-green full-w">鐢熸垚鍓嶈疆杞 MAP</button>
-                <button id="btnResetSteerParams" class="btn btn-gray full-w">閲嶇疆鍙傛暟</button>
-                <div id="steerStatus" class="status-text bold">鐘舵€? 鐐瑰嚮"鐢熸垚鍓嶈疆杞 MAP"寮€濮?/div>
+                <button id="btnGenSteerMap" class="btn btn-green full-w">生成前轮转角 MAP</button>
+                <button id="btnResetSteerParams" class="btn btn-gray full-w">重置参数</button>
+                <div id="steerStatus" class="status-text bold">状态: 点击"生成前轮转角 MAP"开始</div>
                 <div id="steerGainInfo" class="gain-info" style="margin-top:10px"></div>
                 <div class="export-row" style="margin-top:10px">
-                    <button class="btn btn-green btn-sm" onclick="app.exportSteeringCSV()">瀵煎嚭鍓嶈疆杞</button>
+                    <button class="btn btn-green btn-sm" onclick="app.exportSteeringCSV()">导出前轮转角</button>
                 </div>
             </div>
-            <!-- 鍙充晶鍐呭 -->
+            <!-- 右侧内容 -->
             <div class="steer-content">
                 <div class="steer-table-box" style="flex:1">
-                    <h4>鍓嶈疆杞 MAP (deg)</h4>
+                    <h4>前轮转角 MAP (deg)</h4>
                     <div class="table-scroll" id="tblSteerWrap"></div>
                 </div>
                 <div class="steer-charts-row" style="min-height:300px">
@@ -406,12 +404,12 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
         </div>
     </div>
 
-    <!-- 浼犲姩姣?MAP 椤甸潰 -->
+    <!-- 传动比 MAP 页面 -->
     <div class="tab-page" id="page-ratio">
         <div class="layout-bode">
-            <!-- 宸︿晶鍙傛暟闈㈡澘 -->
+            <!-- 左侧参数面板 -->
             <div class="ctrl-panel bode-ctrl">
-                <div class="section-title">杞﹁締鍙傛暟</div>
+                <div class="section-title">车辆参数</div>
                 <div class="param-grid">
                     <label>m [kg]:</label><input type="number" id="ratio_m" value="2914" step="any">
                     <label>Cf [N/rad]:</label><input type="number" id="ratio_Cf" value="177936" step="any">
@@ -420,23 +418,23 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
                     <label>b [m]:</label><input type="number" id="ratio_b" value="1.508" step="any">
                     <label>Iz [kg&middot;m&sup2;]:</label><input type="number" id="ratio_Iz" value="5308" step="any">
                 </div>
-                <div class="section-title">婊ゆ尝鍣ㄥ弬鏁?/div>
+                <div class="section-title">滤波器参数</div>
                 <div class="param-grid">
                     <label>FreqBW [Hz]:</label><input type="number" id="ratio_FreqBW" value="10" step="any">
                     <label>zetaC [-]:</label><input type="number" id="ratio_zetaC" value="1.3" step="any">
                 </div>
-                <button id="btnGenRatioMap" class="btn btn-green full-w">鐢熸垚浼犲姩姣?MAP</button>
-                <button id="btnResetRatioParams" class="btn btn-gray full-w">閲嶇疆鍙傛暟</button>
-                <div id="ratioStatus" class="status-text bold">鐘舵€? 鐐瑰嚮"鐢熸垚浼犲姩姣?MAP"寮€濮?/div>
+                <button id="btnGenRatioMap" class="btn btn-green full-w">生成传动比 MAP</button>
+                <button id="btnResetRatioParams" class="btn btn-gray full-w">重置参数</button>
+                <div id="ratioStatus" class="status-text bold">状态: 点击"生成传动比 MAP"开始</div>
                 <div id="ratioGainInfo" class="gain-info" style="margin-top:10px"></div>
                 <div class="export-row" style="margin-top:10px">
-                    <button class="btn btn-blue btn-sm" onclick="app.exportRatioCSV()">瀵煎嚭浼犲姩姣?/button>
+                    <button class="btn btn-blue btn-sm" onclick="app.exportRatioCSV()">导出传动比</button>
                 </div>
             </div>
-            <!-- 鍙充晶鍐呭 -->
+            <!-- 右侧内容 -->
             <div class="steer-content">
                 <div class="steer-table-box" style="flex:1">
-                    <h4>浼犲姩姣?MAP (SA/&delta;)</h4>
+                    <h4>传动比 MAP (SA/&delta;)</h4>
                     <div class="table-scroll" id="tblRatioWrap"></div>
                 </div>
                 <div class="steer-charts-row" style="min-height:300px">
@@ -448,10 +446,10 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
     </div>
 </div>
 
-<script>
-/* ===== 瀹炴椂妯憜瑙掗€熷害鏍囧畾宸ュ叿 v3.0 - Web鐗?===== */
+<script>/* ===== 实时横摆角速度标定工具 v3.0 - Web版 ===== */
 
-// 鍐呯疆 CSV 瑙ｆ瀽鍣紙鏇夸唬 Papa Parse锛?function parseCSV(text) {
+// 内置 CSV 解析器（替代 Papa Parse）
+function parseCSV(text) {
     const lines = text.split(/\r?\n/).filter(line => line.trim());
     const data = lines.map(line => {
         const row = [];
@@ -477,22 +475,23 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
 const app = (() => {
     "use strict";
 
-    /* ============ 鐘舵€?============ */
+    /* ============ 状态 ============ */
     const S = {
-        SA: [], V: [], Y: [],           // 缃戞牸鏁版嵁 (Y is nSA x nV)
-        dY_dSA: [], dY_dV: [],          // 鍒濆鏂滅巼
-        dY_dSA_adj: [], dY_dV_adj: [],  // 璋冩暣鍚庢枩鐜?        Y_original: [],
+        SA: [], V: [], Y: [],           // 网格数据 (Y is nSA x nV)
+        dY_dSA: [], dY_dV: [],          // 初始斜率
+        dY_dSA_adj: [], dY_dV_adj: [],  // 调整后斜率
+        Y_original: [],
         nSA: 0, nV: 0,
-        cellData: [],                    // Hermite 鍗曞厓鏁版嵁
+        cellData: [],                    // Hermite 单元数据
         isBuilt: false,
         selectedSA_idx: -1,
         selectedV_idx: -1,
-        selectedCells: [],               // Y鍊艰〃鏍间腑閫変腑鐨?[{r,c}, ...]
-        steerDelta: null, steerRatio: null, // 鍓嶈疆杞 MAP 缁撴灉
+        selectedCells: [],               // Y值表格中选中的 [{r,c}, ...]
+        steerDelta: null, steerRatio: null, // 前轮转角 MAP 结果
         steerSA: null, steerV: null,
     };
 
-    /* ============ Chart 瀹炰緥 ============ */
+    /* ============ Chart 实例 ============ */
     const charts = {};
     let colorCycle = [
         '#3b82f6','#ef4444','#22c55e','#f97316','#8b5cf6',
@@ -502,7 +501,7 @@ const app = (() => {
 
     function getColor(i) { return colorCycle[i % colorCycle.length]; }
 
-    /* ============ 鍒濆鍖?============ */
+    /* ============ 初始化 ============ */
     function init() {
         bindTopTabs();
         bindSubTabs();
@@ -544,13 +543,13 @@ const app = (() => {
     }
 
     function bindEvents() {
-        // 鏂囦欢瀵煎叆
+        // 文件导入
         $('btnImportKeyCSV').onclick = () => $('fileInputKey').click();
         $('btnImportCSV').onclick = () => $('fileInput').click();
         $('fileInputKey').addEventListener('change', e => handleFileImport(e, true));
         $('fileInput').addEventListener('change', e => handleFileImport(e, false));
 
-        // 瀵煎嚭
+        // 导出
         $('btnExportMAP').onclick = () => exportMAP();
         $('btnExportMAP2').onclick = () => exportMAP();
         $('btnExportCSV').onclick = () => exportYCSV();
@@ -558,15 +557,15 @@ const app = (() => {
         $('btnExportSlopeCSV').onclick = () => exportAdjustedSlopeCSV();
         $('btnExportExcel').onclick = () => exportExcelCSV();
 
-        // 鎿嶄綔
+        // 操作
         $('btnBuild').onclick = () => buildSurface();
         $('btnResetSlopes').onclick = () => resetAllSlopes();
 
-        // 涓嬫媺閫夋嫨
+        // 下拉选择
         $('popupV').addEventListener('change', onPopupChanged);
         $('popupSA').addEventListener('change', onPopupChanged);
 
-        // 婊戝潡
+        // 滑块
         $('sliderDYdSA').addEventListener('input', e => { $('editDYdSA').value = parseFloat(e.target.value).toFixed(3); });
         $('sliderDYdV').addEventListener('input', e => { $('editDYdV').value = parseFloat(e.target.value).toFixed(3); });
 
@@ -585,7 +584,7 @@ const app = (() => {
 
     function $(id) { return document.getElementById(id); }
 
-    /* ============ Chart 鍒濆鍖?============ */
+    /* ============ Chart 初始化 ============ */
     function initCharts() {
         const commonOpts = {
             responsive: true, maintainAspectRatio: false,
@@ -610,27 +609,27 @@ const app = (() => {
             return o;
         };
 
-        charts.YSA = new Chart($('chartYSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', 'Y (deg/s)', 'Y(SA) 鏇茬嚎', onChartClickSA) });
-        charts.SlopeSA = new Chart($('chartSlopeSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', 'dY/dSA', 'dY/dSA 鏂滅巼', onChartClickSA) });
-        charts.YV = new Chart($('chartYV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', 'Y (deg/s)', 'Y(V) 鏇茬嚎', onChartClickV) });
-        charts.SlopeV = new Chart($('chartSlopeV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', 'dY/dV', 'dY/dV 鏂滅巼', onChartClickV) });
+        charts.YSA = new Chart($('chartYSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', 'Y (deg/s)', 'Y(SA) 曲线', onChartClickSA) });
+        charts.SlopeSA = new Chart($('chartSlopeSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', 'dY/dSA', 'dY/dSA 斜率', onChartClickSA) });
+        charts.YV = new Chart($('chartYV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', 'Y (deg/s)', 'Y(V) 曲线', onChartClickV) });
+        charts.SlopeV = new Chart($('chartSlopeV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', 'dY/dV', 'dY/dV 斜率', onChartClickV) });
 
         // Bode charts
-        charts.GinvMag = new Chart($('chartGinvMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '骞呭€?(dB)', 'G_inv(s) 骞呭€?) });
-        charts.GinvPhase = new Chart($('chartGinvPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '鐩镐綅 (deg)', 'G_inv(s) 鐩镐綅') });
-        charts.HMag = new Chart($('chartHMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '骞呭€?(dB)', 'H(s) 骞呭€?) });
-        charts.HPhase = new Chart($('chartHPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '鐩镐綅 (deg)', 'H(s) 鐩镐綅') });
-        charts.GtotalMag = new Chart($('chartGtotalMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '骞呭€?(dB)', 'G_total(s) 骞呭€?) });
-        charts.GtotalPhase = new Chart($('chartGtotalPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('棰戠巼 (Hz)', '鐩镐綅 (deg)', 'G_total(s) 鐩镐綅') });
+        charts.GinvMag = new Chart($('chartGinvMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '幅值 (dB)', 'G_inv(s) 幅值') });
+        charts.GinvPhase = new Chart($('chartGinvPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '相位 (deg)', 'G_inv(s) 相位') });
+        charts.HMag = new Chart($('chartHMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '幅值 (dB)', 'H(s) 幅值') });
+        charts.HPhase = new Chart($('chartHPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '相位 (deg)', 'H(s) 相位') });
+        charts.GtotalMag = new Chart($('chartGtotalMag'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '幅值 (dB)', 'G_total(s) 幅值') });
+        charts.GtotalPhase = new Chart($('chartGtotalPhase'), { type: 'scatter', data: { datasets: [] }, options: makeLogOpts('频率 (Hz)', '相位 (deg)', 'G_total(s) 相位') });
 
         // Steer page charts
-        charts.SteerSA = new Chart($('chartSteerSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', '鍓嶈疆杞 未 (deg)', '鍓嶈疆杞 vs 鏂瑰悜鐩樿搴?) });
-        charts.SteerV = new Chart($('chartSteerV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', '鍓嶈疆杞 未 (deg)', '鍓嶈疆杞 vs 杞﹂€?) });
-        charts.RatioSA = new Chart($('chartRatioSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', '浼犲姩姣?SA/未', '浼犲姩姣?vs 鏂瑰悜鐩樿搴?) });
-        charts.RatioV = new Chart($('chartRatioV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', '浼犲姩姣?SA/未', '浼犲姩姣?vs 杞﹂€?) });
+        charts.SteerSA = new Chart($('chartSteerSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', '前轮转角 δ (deg)', '前轮转角 vs 方向盘角度') });
+        charts.SteerV = new Chart($('chartSteerV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', '前轮转角 δ (deg)', '前轮转角 vs 车速') });
+        charts.RatioSA = new Chart($('chartRatioSA'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('SA (deg)', '传动比 SA/δ', '传动比 vs 方向盘角度') });
+        charts.RatioV = new Chart($('chartRatioV'), { type: 'scatter', data: { datasets: [] }, options: makeOpts('V (km/h)', '传动比 SA/δ', '传动比 vs 车速') });
     }
 
-    /* ============ 鍥捐〃鐐瑰嚮鑱斿姩 ============ */
+    /* ============ 图表点击联动 ============ */
     function onChartClickSA(evt, elements, chart) {
         if (!elements.length || S.nSA === 0) return;
         const el = elements[0];
@@ -676,10 +675,14 @@ const app = (() => {
         const si = S.selectedSA_idx, vi = S.selectedV_idx;
         const sa = S.SA[si], v = S.V[vi];
 
-        // 鏇存柊 Y(SA) 鍥鹃珮浜?        updateChartHighlight(charts.YSA, sa, S.Y[si][vi]);
-        // 鏇存柊 dY/dSA 鍥鹃珮浜?        updateChartHighlight(charts.SlopeSA, sa, S.dY_dSA_adj[si][vi]);
-        // 鏇存柊 Y(V) 鍥鹃珮浜?        updateChartHighlight(charts.YV, v, S.Y[si][vi]);
-        // 鏇存柊 dY/dV 鍥鹃珮浜?        updateChartHighlight(charts.SlopeV, v, S.dY_dV_adj[si][vi]);
+        // 更新 Y(SA) 图高亮
+        updateChartHighlight(charts.YSA, sa, S.Y[si][vi]);
+        // 更新 dY/dSA 图高亮
+        updateChartHighlight(charts.SlopeSA, sa, S.dY_dSA_adj[si][vi]);
+        // 更新 Y(V) 图高亮
+        updateChartHighlight(charts.YV, v, S.Y[si][vi]);
+        // 更新 dY/dV 图高亮
+        updateChartHighlight(charts.SlopeV, v, S.dY_dV_adj[si][vi]);
     }
 
     function updateChartHighlight(chart, xVal, yVal) {
@@ -690,44 +693,46 @@ const app = (() => {
         }
     }
 
-    /* ============ 鏂囦欢瀵煎叆 ============ */
+    /* ============ 文件导入 ============ */
     function handleFileImport(e, isKey) {
         const file = e.target.files[0];
         if (!file) return;
 
-        console.log('=== 瀵煎叆鎸夐挳琚偣鍑?===');
-        console.log('鏂囦欢:', file.name, '澶у皬:', file.size, '绫诲瀷:', file.type);
+        console.log('=== 导入按钮被点击 ===');
+        console.log('文件:', file.name, '大小:', file.size, '类型:', file.type);
 
         const reader = new FileReader();
         reader.onload = function(event) {
             try {
                 const text = event.target.result;
-                console.log('鏂囦欢鍐呭鍓?00瀛楃:', text.substring(0, 200));
+                console.log('文件内容前200字符:', text.substring(0, 200));
 
                 const results = parseCSV(text);
-                console.log('瑙ｆ瀽瀹屾垚:', results.data.length, '琛屾暟鎹?);
+                console.log('解析完成:', results.data.length, '行数据');
 
                 const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
-                console.log('杩囨护鍚庢湁鏁堣:', rows.length);
+                console.log('过滤后有效行:', rows.length);
 
                 if (rows.length < 2) {
-                    console.error('鉂?鏁版嵁琛屼笉瓒?', rows.length);
-                    throw new Error('鏁版嵁琛屼笉瓒筹紝璇锋鏌?CSV 鏍煎紡');
+                    console.error('❌ 数据行不足:', rows.length);
+                    throw new Error('数据行不足，请检查 CSV 格式');
                 }
 
-                // 绗竴琛? 棣栨牸鍙兘涓?"V/SA" 鎴栫┖, 涔嬪悗涓?SA 鍊?                const headerRow = rows[0];
-                console.log('琛ㄥご琛?', headerRow);
+                // 第一行: 首格可能为 "V/SA" 或空, 之后为 SA 值
+                const headerRow = rows[0];
+                console.log('表头行:', headerRow);
                 const startCol = isNaN(parseFloat(headerRow[0])) ? 1 : 0;
-                console.log('璧峰鍒?', startCol);
+                console.log('起始列:', startCol);
 
                 const SA_vals = [];
                 for (let c = startCol; c < headerRow.length; c++) {
                     const v = parseFloat(headerRow[c]);
                     if (!isNaN(v)) SA_vals.push(v);
                 }
-                console.log('SA鍊?', SA_vals);
+                console.log('SA值:', SA_vals);
 
-                // 鏁版嵁琛? 棣栧垪涓?V 鍊? 涔嬪悗涓?Y 鍊?                const V_vals = [];
+                // 数据行: 首列为 V 值, 之后为 Y 值
+                const V_vals = [];
                 const Y_rows = [];
                 for (let r = 1; r < rows.length; r++) {
                     const row = rows[r];
@@ -740,15 +745,15 @@ const app = (() => {
                     }
                     Y_rows.push(yrow);
                 }
-                console.log('V鍊?', V_vals);
-                console.log('Y鏁版嵁琛屾暟:', Y_rows.length);
+                console.log('V值:', V_vals);
+                console.log('Y数据行数:', Y_rows.length);
 
                 if (SA_vals.length === 0 || V_vals.length === 0) {
-                    console.error('鉂?SA鎴朧鍊间负绌?);
-                    throw new Error('鏈壘鍒版湁鏁堢殑SA鎴朧鍊?);
+                    console.error('❌ SA或V值为空');
+                    throw new Error('未找到有效的SA或V值');
                 }
 
-                // 鎺掑簭
+                // 排序
                 const saOrder = SA_vals.map((v, i) => i).sort((a, b) => SA_vals[a] - SA_vals[b]);
                 const vOrder = V_vals.map((v, i) => i).sort((a, b) => V_vals[a] - V_vals[b]);
 
@@ -757,7 +762,7 @@ const app = (() => {
                 S.nSA = S.SA.length;
                 S.nV = S.V.length;
 
-                // Y 鐭╅樀: nSA x nV
+                // Y 矩阵: nSA x nV
                 S.Y = [];
                 for (let si = 0; si < S.nSA; si++) {
                     S.Y[si] = [];
@@ -775,35 +780,35 @@ const app = (() => {
                 S.selectedSA_idx = -1;
                 S.selectedV_idx = -1;
 
-                console.log('鉁?鍏抽敭鐐瑰姞杞藉畬鎴?', S.nSA, '涓猄A,', S.nV, '涓猇');
+                console.log('✅ 关键点加载完成:', S.nSA, '个SA,', S.nV, '个V');
 
                 updatePopupSelects();
                 updateAllTables();
                 updatePlots();
                 onPopupChanged();
 
-                console.log('鉁?琛ㄦ牸鍜屽浘琛ㄦ洿鏂板畬鎴?);
+                console.log('✅ 表格和图表更新完成');
 
-                $('importStatus').textContent = `宸插鍏? ${file.name} (${S.nSA}SA x ${S.nV}V)`;
+                $('importStatus').textContent = `已导入: ${file.name} (${S.nSA}SA x ${S.nV}V)`;
                 $('importStatus').classList.remove('muted');
                 $('importStatus').style.color = '#16a34a';
-                $('statusText').textContent = `鐘舵€? 缃戞牸宸插垱寤?(${S.nSA}x${S.nV})`;
+                $('statusText').textContent = `状态: 网格已创建 (${S.nSA}x${S.nV})`;
                 $('statusText').style.color = '#16a34a';
             } catch (err) {
-                console.error('瀵煎叆閿欒璇︽儏:', err);
-                alert('瀵煎叆澶辫触: ' + err.message + '\n\n璇锋寜 F12 鎵撳紑寮€鍙戣€呭伐鍏凤紝鏌ョ湅 Console 鏍囩椤电殑璇︾粏閿欒淇℃伅');
+                console.error('导入错误详情:', err);
+                alert('导入失败: ' + err.message + '\n\n请按 F12 打开开发者工具，查看 Console 标签页的详细错误信息');
             }
             e.target.value = '';
         };
         reader.onerror = function() {
-            console.error('鏂囦欢璇诲彇澶辫触');
-            alert('鏂囦欢璇诲彇澶辫触锛岃纭繚鏂囦欢鏈鍏朵粬绋嬪簭鍗犵敤');
+            console.error('文件读取失败');
+            alert('文件读取失败，请确保文件未被其他程序占用');
             e.target.value = '';
         };
         reader.readAsText(file, 'UTF-8');
     }
 
-    /* ============ 涓嬫媺鍒楄〃 ============ */
+    /* ============ 下拉列表 ============ */
     function updatePopupSelects() {
         const popV = $('popupV'), popSA = $('popupSA');
         popV.innerHTML = S.V.map((v, i) => `<option value="${i}">${v.toFixed(0)}</option>`).join('');
@@ -821,19 +826,19 @@ const app = (() => {
         const Y_val = S.Y[si][vi];
         const dSA = S.dY_dSA_adj[si][vi], dV = S.dY_dV_adj[si][vi];
 
-        $('currentPoint').textContent = `褰撳墠鐐? V=${V_val.toFixed(0)}, SA=${SA_val.toFixed(0)}`;
+        $('currentPoint').textContent = `当前点: V=${V_val.toFixed(0)}, SA=${SA_val.toFixed(0)}`;
         $('currentValues').textContent = `Y=${Y_val.toFixed(2)}    dY/dSA=${dSA.toFixed(4)}    dY/dV=${dV.toFixed(4)}`;
         $('editDYdSA').value = dSA.toFixed(4);
         $('editDYdV').value = dV.toFixed(4);
         $('sliderDYdSA').value = Math.min(Math.max(dSA, 0), 2);
         $('sliderDYdV').value = Math.min(Math.max(dV, 0), 5);
-        $('textCurDYdSA').textContent = `褰撳墠鍊? ${dSA.toFixed(4)}`;
-        $('textCurDYdV').textContent = `褰撳墠鍊? ${dV.toFixed(4)}`;
-        $('statusText').textContent = `鐘舵€? 宸查€変腑 V=${V_val.toFixed(0)}, SA=${SA_val.toFixed(0)}`;
+        $('textCurDYdSA').textContent = `当前值: ${dSA.toFixed(4)}`;
+        $('textCurDYdV').textContent = `当前值: ${dV.toFixed(4)}`;
+        $('statusText').textContent = `状态: 已选中 V=${V_val.toFixed(0)}, SA=${SA_val.toFixed(0)}`;
         $('statusText').style.color = '#16a34a';
     }
 
-    /* ============ 琛ㄦ牸娓叉煋 ============ */
+    /* ============ 表格渲染 ============ */
     function buildTable(data, colHeaders, rowHeaders, editable, tableName) {
         let html = '<table class="data-table"><thead><tr><th class="corner">V\\SA</th>';
         for (const h of colHeaders) html += `<th>${h}</th>`;
@@ -910,14 +915,15 @@ const app = (() => {
     }
 
     function onYCellClick(e) {
-        // 澶氶€夋敮鎸?        const td = e.target;
+        // 多选支持
+        const td = e.target;
         if (e.ctrlKey || e.metaKey) {
             td.classList.toggle('selected');
         } else {
             $('tblYWrap').querySelectorAll('td.selected').forEach(t => t.classList.remove('selected'));
             td.classList.add('selected');
         }
-        // 鏀堕泦閫変腑鐨勫崟鍏冩牸
+        // 收集选中的单元格
         S.selectedCells = [];
         $('tblYWrap').querySelectorAll('td.selected').forEach(t => {
             S.selectedCells.push({ r: parseInt(t.dataset.r), c: parseInt(t.dataset.c) });
@@ -925,9 +931,9 @@ const app = (() => {
         const n = S.selectedCells.length;
         if (n <= 3 && n > 0) {
             const details = S.selectedCells.map(sc => `V=${S.V[sc.r].toFixed(0)},SA=${S.SA[sc.c].toFixed(0)}`);
-            $('selectionStatus').textContent = `宸查€夋嫨: ${n} 涓?(${details.join('; ')})`;
+            $('selectionStatus').textContent = `已选择: ${n} 个 (${details.join('; ')})`;
         } else {
-            $('selectionStatus').textContent = `宸查€夋嫨: ${n} 涓崟鍏冩牸`;
+            $('selectionStatus').textContent = `已选择: ${n} 个单元格`;
         }
     }
 
@@ -951,7 +957,7 @@ const app = (() => {
         updatePlots();
     }
 
-    /* ============ Y鍊兼壒閲忚皟鏁?============ */
+    /* ============ Y值批量调整 ============ */
     function adjustYValues(op) {
         if (S.nSA === 0) return;
         const val = parseFloat($('editYAdjust').value);
@@ -960,7 +966,7 @@ const app = (() => {
         const cells = S.selectedCells.length > 0 ? S.selectedCells : null;
 
         if (!cells) {
-            // 璋冩暣鍏ㄩ儴
+            // 调整全部
             for (let si = 0; si < S.nSA; si++) {
                 for (let vi = 0; vi < S.nV; vi++) {
                     S.Y[si][vi] = applyOp(S.Y[si][vi], op, val);
@@ -968,7 +974,7 @@ const app = (() => {
             }
         } else {
             for (const sc of cells) {
-                // sc.r = V index, sc.c = SA index (琛ㄦ牸杞疆鍚?
+                // sc.r = V index, sc.c = SA index (表格转置后)
                 S.Y[sc.c][sc.r] = applyOp(S.Y[sc.c][sc.r], op, val);
             }
         }
@@ -993,10 +999,10 @@ const app = (() => {
         return v;
     }
 
-    /* ============ 鏂滅巼璋冩暣 ============ */
+    /* ============ 斜率调整 ============ */
     function setSinglePointSlope(dir) {
         if (S.nSA === 0 || S.selectedSA_idx < 0 || S.selectedV_idx < 0) {
-            alert('璇峰厛閫夋嫨瑕佽皟鏁寸殑鐐?);
+            alert('请先选择要调整的点');
             return;
         }
         const si = S.selectedSA_idx, vi = S.selectedV_idx;
@@ -1039,7 +1045,7 @@ const app = (() => {
         }
     }
 
-    /* ============ 鏍稿績绠楁硶: PCHIP 鏂滅巼璁＄畻 ============ */
+    /* ============ 核心算法: PCHIP 斜率计算 ============ */
     function computeInitialSlopes(X, Y_axis, Ymat, direction) {
         // X = grid points along the differentiation direction
         // Y_axis = grid points along the other direction
@@ -1118,7 +1124,7 @@ const app = (() => {
         return d;
     }
 
-    /* ============ 鏍稿績绠楁硶: Hermite 鎻掑€?============ */
+    /* ============ 核心算法: Hermite 插值 ============ */
     function buildHermiteCells() {
         const nSA = S.nSA, nV = S.nV;
         const cells = [];
@@ -1229,17 +1235,17 @@ const app = (() => {
         }
     }
 
-    /* ============ 鏋勫缓鏇查潰 ============ */
+    /* ============ 构建曲面 ============ */
     function buildSurface() {
         if (S.nSA === 0) return;
         S.cellData = buildHermiteCells();
         S.isBuilt = true;
         updatePlots();
-        $('statusText').textContent = '鐘舵€? 鏇查潰宸叉瀯寤?;
+        $('statusText').textContent = '状态: 曲面已构建';
         $('statusText').style.color = '#16a34a';
     }
 
-    /* ============ 鏇存柊鍥捐〃 ============ */
+    /* ============ 更新图表 ============ */
     function updatePlots() {
         if (S.nSA === 0) return;
 
@@ -1270,7 +1276,7 @@ const app = (() => {
             // highlight
             if (S.selectedSA_idx >= 0 && S.selectedV_idx >= 0) {
                 datasets.push({
-                    label: '閫変腑', _isHighlight: true,
+                    label: '选中', _isHighlight: true,
                     data: [{ x: S.SA[S.selectedSA_idx], y: S.Y[S.selectedSA_idx][S.selectedV_idx] }],
                     borderColor: '#ef4444', backgroundColor: '#ef4444',
                     pointRadius: 10, pointStyle: 'circle', showLine: false, borderWidth: 3
@@ -1308,7 +1314,7 @@ const app = (() => {
             });
             if (S.selectedSA_idx >= 0 && S.selectedV_idx >= 0) {
                 datasets.push({
-                    label: '閫変腑', _isHighlight: true,
+                    label: '选中', _isHighlight: true,
                     data: [{ x: S.SA[S.selectedSA_idx], y: S.dY_dSA_adj[S.selectedSA_idx][S.selectedV_idx] }],
                     borderColor: '#ef4444', backgroundColor: '#ef4444',
                     pointRadius: 10, showLine: false, borderWidth: 3
@@ -1341,7 +1347,7 @@ const app = (() => {
             }
             if (S.selectedSA_idx >= 0 && S.selectedV_idx >= 0) {
                 datasets.push({
-                    label: '閫変腑', _isHighlight: true,
+                    label: '选中', _isHighlight: true,
                     data: [{ x: S.V[S.selectedV_idx], y: S.Y[S.selectedSA_idx][S.selectedV_idx] }],
                     borderColor: '#ef4444', backgroundColor: '#ef4444',
                     pointRadius: 10, showLine: false, borderWidth: 3
@@ -1378,7 +1384,7 @@ const app = (() => {
             });
             if (S.selectedSA_idx >= 0 && S.selectedV_idx >= 0) {
                 datasets.push({
-                    label: '閫変腑', _isHighlight: true,
+                    label: '选中', _isHighlight: true,
                     data: [{ x: S.V[S.selectedV_idx], y: S.dY_dV_adj[S.selectedSA_idx][S.selectedV_idx] }],
                     borderColor: '#ef4444', backgroundColor: '#ef4444',
                     pointRadius: 10, showLine: false, borderWidth: 3
@@ -1401,10 +1407,10 @@ const app = (() => {
         return arr;
     }
 
-    /* ============ Bode 鍒嗘瀽 ============ */
+    /* ============ Bode 分析 ============ */
     function updateBodePlot() {
-        if (S.nSA === 0) { alert('璇峰厛鍦?MAP 鏍囧畾椤甸潰瀵煎叆鏁版嵁'); return; }
-        $('bodeStatus').textContent = '鐘舵€? 姝ｅ湪璁＄畻...';
+        if (S.nSA === 0) { alert('请先在 MAP 标定页面导入数据'); return; }
+        $('bodeStatus').textContent = '状态: 正在计算...';
         $('bodeStatus').style.color = '#d97706';
 
         setTimeout(() => {
@@ -1465,12 +1471,12 @@ const app = (() => {
                     });
                 }, 100);
 
-                $('bodeStatus').textContent = '鐘舵€? Bode 鍒嗘瀽瀹屾垚';
+                $('bodeStatus').textContent = '状态: Bode 分析完成';
                 $('bodeStatus').style.color = '#16a34a';
             } catch (err) {
                 console.error(err);
-                alert('Bode 璁＄畻鍑洪敊: ' + err.message);
-                $('bodeStatus').textContent = '鐘舵€? 璁＄畻鍑洪敊';
+                alert('Bode 计算出错: ' + err.message);
+                $('bodeStatus').textContent = '状态: 计算出错';
                 $('bodeStatus').style.color = '#dc2626';
             }
         }, 10);
@@ -1603,15 +1609,16 @@ const app = (() => {
         chart.update();
     }
 
-    /* ============ 鍓嶈疆杞 MAP ============ */
+    /* ============ 前轮转角 MAP ============ */
     function generateSteeringMap() {
-        if (S.nSA === 0) { alert('璇峰厛鍦?MAP 鏍囧畾椤甸潰瀵煎叆鏁版嵁'); return; }
-        $('steerStatus').textContent = '鐘舵€? 姝ｅ湪璁＄畻鍓嶈疆杞 MAP...';
+        if (S.nSA === 0) { alert('请先在 MAP 标定页面导入数据'); return; }
+        $('steerStatus').textContent = '状态: 正在计算前轮转角 MAP...';
         $('steerStatus').style.color = '#d97706';
 
         setTimeout(() => {
             try {
-                // 璇诲彇 steer 椤甸潰鐨勫弬鏁?                const p = {
+                // 读取 steer 页面的参数
+                const p = {
                     m_inv: parseFloat($('steer_m').value),
                     Cf_inv: parseFloat($('steer_Cf').value),
                     Cr_inv: parseFloat($('steer_Cr').value),
@@ -1662,12 +1669,12 @@ const app = (() => {
 
                 renderSteerPage(delta_gtotal, ratio_MAP, G_total_mag_vec, f_target);
 
-                $('steerStatus').textContent = '鐘舵€? 鍓嶈疆杞 MAP 鐢熸垚瀹屾垚';
+                $('steerStatus').textContent = '状态: 前轮转角 MAP 生成完成';
                 $('steerStatus').style.color = '#16a34a';
             } catch (err) {
                 console.error(err);
-                alert('璁＄畻鍑洪敊: ' + err.message);
-                $('steerStatus').textContent = '鐘舵€? 璁＄畻鍑洪敊';
+                alert('计算出错: ' + err.message);
+                $('steerStatus').textContent = '状态: 计算出错';
                 $('steerStatus').style.color = '#dc2626';
             }
         }, 10);
@@ -1683,7 +1690,7 @@ const app = (() => {
 
         $('tblSteerWrap').innerHTML = buildTable(transpose(delta), saH, vH, false, 'steer');
 
-        // 鍓嶈疆杞 vs SA
+        // 前轮转角 vs SA
         {
             const datasets = [];
             for (let j = 0; j < S.nV; j++) {
@@ -1697,7 +1704,7 @@ const app = (() => {
             charts.SteerSA.data.datasets = datasets;
             charts.SteerSA.update();
         }
-        // 鍓嶈疆杞 vs V
+        // 前轮转角 vs V
         {
             const datasets = [];
             for (let i = 0; i < S.nSA; i++) {
@@ -1714,8 +1721,8 @@ const app = (() => {
     }
 
     function generateRatioMap() {
-        if (S.nSA === 0) { alert('璇峰厛鍦?MAP 鏍囧畾椤甸潰瀵煎叆鏁版嵁'); return; }
-        $('ratioStatus').textContent = '鐘舵€? 姝ｅ湪璁＄畻浼犲姩姣?MAP...';
+        if (S.nSA === 0) { alert('请先在 MAP 标定页面导入数据'); return; }
+        $('ratioStatus').textContent = '状态: 正在计算传动比 MAP...';
         $('ratioStatus').style.color = '#d97706';
 
         setTimeout(() => {
@@ -1770,12 +1777,12 @@ const app = (() => {
 
                 renderRatioPage(ratio_MAP, G_total_mag_vec, f_target);
 
-                $('ratioStatus').textContent = '鐘舵€? 浼犲姩姣?MAP 鐢熸垚瀹屾垚';
+                $('ratioStatus').textContent = '状态: 传动比 MAP 生成完成';
                 $('ratioStatus').style.color = '#16a34a';
             } catch (err) {
                 console.error(err);
-                alert('璁＄畻鍑洪敊: ' + err.message);
-                $('ratioStatus').textContent = '鐘舵€? 璁＄畻鍑洪敊';
+                alert('计算出错: ' + err.message);
+                $('ratioStatus').textContent = '状态: 计算出错';
                 $('ratioStatus').style.color = '#dc2626';
             }
         }, 10);
@@ -1791,7 +1798,7 @@ const app = (() => {
 
         $('tblRatioWrap').innerHTML = buildTable(transpose(ratio), saH, vH, false, 'ratio');
 
-        // 浼犲姩姣?vs SA
+        // 传动比 vs SA
         {
             const datasets = [];
             for (let j = 0; j < S.nV; j++) {
@@ -1805,7 +1812,7 @@ const app = (() => {
             charts.RatioSA.data.datasets = datasets;
             charts.RatioSA.update();
         }
-        // 浼犲姩姣?vs V
+        // 传动比 vs V
         {
             const datasets = [];
             for (let i = 0; i < S.nSA; i++) {
@@ -1830,7 +1837,7 @@ const app = (() => {
         $('ratio_Iz').value = '5308';
         $('ratio_FreqBW').value = '10';
         $('ratio_zetaC').value = '1.3';
-        $('ratioStatus').textContent = '鐘舵€? 鍙傛暟宸查噸缃?;
+        $('ratioStatus').textContent = '状态: 参数已重置';
         $('ratioStatus').style.color = '#16a34a';
     }
 
@@ -1843,13 +1850,13 @@ const app = (() => {
         $('steer_Iz').value = '5308';
         $('steer_FreqBW').value = '10';
         $('steer_zetaC').value = '1.3';
-        $('steerStatus').textContent = '鐘舵€? 鍙傛暟宸查噸缃?;
+        $('steerStatus').textContent = '状态: 参数已重置';
         $('steerStatus').style.color = '#16a34a';
     }
 
-    /* ============ 瀵煎嚭鍔熻兘 ============ */
+    /* ============ 导出功能 ============ */
     function exportMAP() {
-        if (!S.isBuilt) { alert('璇峰厛鏋勫缓鏇查潰'); return; }
+        if (!S.isBuilt) { alert('请先构建曲面'); return; }
         const nSA_out = 21, nV_out = 15;
         const SA_out = linspace(S.SA[0], S.SA[S.nSA - 1], nSA_out);
         const V_out = linspace(S.V[0], S.V[S.nV - 1], nV_out);
@@ -1943,7 +1950,7 @@ const app = (() => {
         URL.revokeObjectURL(url);
     }
 
-    /* ============ Bode 鍙傛暟閲嶇疆 ============ */
+    /* ============ Bode 参数重置 ============ */
     function resetBodeParams() {
         $('m_inv').value = '2914';
         $('Cf_inv').value = '177936';
@@ -1959,24 +1966,16 @@ const app = (() => {
         $('Iz_trans').value = '5771.52';
         $('FreqBW').value = '10';
         $('zetaC').value = '1.3';
-        $('bodeStatus').textContent = '鐘舵€? 鍙傛暟宸查噸缃?;
+        $('bodeStatus').textContent = '状态: 参数已重置';
         $('bodeStatus').style.color = '#16a34a';
     }
 
-    /* ============ 鍒濆鍖?============ */
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-    console.log('app.js code executed');
+    /* ============ 初始化 ============ */
+    document.addEventListener('DOMContentLoaded', init);
 
-    /* ============ 鍏紑 API ============ */
+    /* ============ 公开 API ============ */
     return { adjustYValues, setSinglePointSlope, resetSteerParams, resetRatioParams, exportSteeringCSV, exportRatioCSV };
 })();
-
 </script>
 </body>
 </html>
-
-
