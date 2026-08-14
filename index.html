@@ -198,8 +198,15 @@ input[type="range"] { width: 100%; margin: 2px 0; accent-color: #3b82f6; }
             <div class="ctrl-panel">
                 <!-- 关键点导入 -->
                 <div class="section-title">关键点导入</div>
-                <button id="btnImportKeyCSV" class="btn btn-primary full-w">从 CSV 导入关键点</button>
-                <div id="importStatus" class="status-text muted">(未导入，请选择 CSV 文件)</div>
+                <div style="margin-bottom:6px;">
+                    <select id="repoFileSelect" style="width:100%;padding:4px;font-size:12px;">
+                        <option value="">-- 选择仓库文件 --</option>
+                        <option value="sample_data.csv">sample_data.csv</option>
+                    </select>
+                </div>
+                <button id="btnLoadRepoFile" class="btn btn-primary full-w" style="margin-bottom:4px;">加载仓库文件</button>
+                <button id="btnImportKeyCSV" class="btn btn-primary full-w">从本地导入 CSV</button>
+                <div id="importStatus" class="status-text muted">(未导入，请选择文件)</div>
                 <input type="file" id="fileInputKey" accept=".csv,.txt,.xls,.xlsx,text/csv,application/vnd.ms-excel" style="display:none">
 
                 <!-- 数据表格 -->
@@ -691,6 +698,126 @@ const app = (() => {
             hlDs.data = [{ x: xVal, y: yVal }];
             chart.update('none');
         }
+    }
+
+    
+    
+    /* ============ 解析并加载 CSV ============ */
+    function parseAndLoadCSV(text, filename) {
+        try {
+            const results = parseCSV(text);
+            console.log('解析完成:', results.data.length, '行数据');
+
+            const rows = results.data.filter(r => r.length > 1 && r.some(c => c !== ''));
+            console.log('过滤后有效行:', rows.length);
+
+            if (rows.length < 2) {
+                throw new Error('数据行不足，请检查 CSV 格式');
+            }
+
+            const headerRow = rows[0];
+            console.log('表头行:', headerRow);
+            const startCol = isNaN(parseFloat(headerRow[0])) ? 1 : 0;
+
+            const SA_vals = [];
+            for (let c = startCol; c < headerRow.length; c++) {
+                const v = parseFloat(headerRow[c]);
+                if (!isNaN(v)) SA_vals.push(v);
+            }
+            console.log('SA值:', SA_vals);
+
+            const V_vals = [];
+            const Y_rows = [];
+            for (let r = 1; r < rows.length; r++) {
+                const row = rows[r];
+                const v = parseFloat(row[0]);
+                if (isNaN(v)) continue;
+                V_vals.push(v);
+                const yrow = [];
+                for (let c = startCol; c < startCol + SA_vals.length; c++) {
+                    yrow.push(parseFloat(row[c]) || 0);
+                }
+                Y_rows.push(yrow);
+            }
+            console.log('V值:', V_vals);
+
+            if (SA_vals.length === 0 || V_vals.length === 0) {
+                throw new Error('未找到有效的SA或V值');
+            }
+
+            const saOrder = SA_vals.map((v, i) => i).sort((a, b) => SA_vals[a] - SA_vals[b]);
+            const vOrder = V_vals.map((v, i) => i).sort((a, b) => V_vals[a] - V_vals[b]);
+
+            S.SA = saOrder.map(i => SA_vals[i]);
+            S.V = vOrder.map(i => V_vals[i]);
+            S.nSA = S.SA.length;
+            S.nV = S.V.length;
+
+            S.Y = [];
+            for (let si = 0; si < S.nSA; si++) {
+                S.Y[si] = [];
+                for (let vi = 0; vi < S.nV; vi++) {
+                    S.Y[si][vi] = Y_rows[vOrder[vi]][saOrder[si]];
+                }
+            }
+
+            S.Y_original = S.Y.map(r => [...r]);
+            S.dY_dSA = computeInitialSlopes(S.SA, S.V, S.Y, 'SA');
+            S.dY_dV = computeInitialSlopes(S.SA, S.V, S.Y, 'V');
+            S.dY_dSA_adj = S.dY_dSA.map(r => [...r]);
+            S.dY_dV_adj = S.dY_dV.map(r => [...r]);
+            S.isBuilt = false;
+            S.selectedSA_idx = -1;
+            S.selectedV_idx = -1;
+
+            console.log('✅ 关键点加载完成:', S.nSA, '个SA,', S.nV, '个V');
+
+            updatePopupSelects();
+            updateAllTables();
+            updatePlots();
+            onPopupChanged();
+
+            console.log('✅ 表格和图表更新完成');
+
+            document.getElementById('importStatus').textContent = '已导入: ' + filename + ' (' + S.nSA + 'SA x ' + S.nV + 'V)';
+            document.getElementById('importStatus').classList.remove('muted');
+            document.getElementById('importStatus').style.color = '#16a34a';
+            document.getElementById('statusText').textContent = '状态: 网格已创建 (' + S.nSA + 'x' + S.nV + ')';
+            document.getElementById('statusText').style.color = '#16a34a';
+        } catch (err) {
+            console.error('导入错误:', err);
+            alert('导入失败: ' + err.message);
+        }
+    }
+
+    /* ============ 加载仓库文件 ============ */
+    function loadRepoFile() {
+        const select = document.getElementById('repoFileSelect');
+        const filename = select.value;
+        if (!filename) {
+            alert('请先选择一个仓库文件');
+            return;
+        }
+
+        console.log('=== 加载仓库文件 ===');
+        console.log('文件名:', filename);
+
+        const url = 'https://raw.githubusercontent.com/jugaolin/DSR-tool/master/' + filename;
+        console.log('URL:', url);
+
+        fetch(url)
+            .then(function(response) {
+                if (!response.ok) throw new Error('网络响应错误: ' + response.status);
+                return response.text();
+            })
+            .then(function(text) {
+                console.log('文件内容前200字符:', text.substring(0, 200));
+                parseAndLoadCSV(text, filename);
+            })
+            .catch(function(err) {
+                console.error('加载失败:', err);
+                alert('加载仓库文件失败: ' + err.message);
+            });
     }
 
     /* ============ 文件导入 ============ */
